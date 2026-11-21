@@ -1,7 +1,7 @@
 # OnlineForms status
 
 Public status page for [onlineforms.app](https://onlineforms.app), at
-https://status.onlineforms.app (fallback: https://wowblaauw.github.io/onlineforms-status/).
+https://wowblaauw.github.io/onlineforms-status/ (status.onlineforms.app forwards here).
 
 It is hosted on GitHub so that it stays up if OnlineForms itself is down. GitHub checks the
 site every five minutes (often a little late) and updates `status.json`. A problem opens an
