@@ -46,7 +46,7 @@ async function load(){
  try{const m=await fetch('message.txt'+stamp,{cache:'no-store'});note('message',m.ok?(await m.text()).trim().slice(0,1000):'');}catch{note('message','');}
  try{
   const r=await fetch('status.json'+stamp,{cache:'no-store'});if(!r.ok)throw 0;const s=await r.json();
-  const old=Date.now()-Date.parse(s.checkedAt)>50*60000;
+  const old=Date.now()-Date.parse(s.checkedAt)>120*60000;
   if(old)show('','Status not confirmed','The automatic check has not reported for a while, so we cannot confirm the current state. The last result was: '+(s.ok?'everything working':'a problem')+'.');
   else if(s.ok)show('ok','Everything is working','No problems found. Working normally since '+when(s.since)+'.');
   else show('problem','We are aware of a problem','Something is not working as it should, and we are on it. First noticed '+when(s.since)+'. Responses already submitted are safe.');
