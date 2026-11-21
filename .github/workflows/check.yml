@@ -1,0 +1,44 @@
+name: Check onlineforms.app
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+  issues: write
+concurrency:
+  group: check
+  cancel-in-progress: false
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - id: check
+        run: node check.mjs
+      - name: Save the result
+        if: steps.check.outputs.wrote == 'true'
+        run: |
+          git config user.name "status-check"
+          git config user.email "status-check@users.noreply.github.com"
+          git add status.json
+          git diff --cached --quiet || git commit -q -m "Status: ${{ steps.check.outputs.ok == 'true' && 'all working' || 'problem detected' }}"
+          git push -q
+      - name: Tell the owner when a problem starts
+        if: steps.check.outputs.ok == 'false' && steps.check.outputs.was_ok == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SUMMARY: ${{ steps.check.outputs.summary }}
+        run: gh issue create --repo "$GITHUB_REPOSITORY" --title "OnlineForms problem detected" --body "The outside check found a problem at $(date -u '+%H:%M UTC on %d %B %Y'). $SUMMARY. Status page: https://status.onlineforms.app"
+      - name: Close it when everything works again
+        if: steps.check.outputs.ok == 'true' && steps.check.outputs.was_ok == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for n in $(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "OnlineForms problem detected in:title" --json number --jq '.[].number'); do
+            gh issue close "$n" --repo "$GITHUB_REPOSITORY" --comment "All checks are working again as of $(date -u '+%H:%M UTC on %d %B %Y')."
+          done

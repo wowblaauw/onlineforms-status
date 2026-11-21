@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OnlineForms status</title>
+<meta name="description" content="Whether OnlineForms is working right now.">
+<style>
+ :root{--ink:#23351b;--muted:#5b704e;--line:#dfe5d6;--paper:#f7f9f2}
+ *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--paper);color:var(--ink);line-height:1.6}
+ main{max-width:680px;margin:0 auto;padding:48px 22px 64px}
+ header{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap;margin-bottom:28px}
+ header strong{font-size:20px;letter-spacing:-.3px}header a{color:var(--muted);font-size:14px}
+ .state{border-radius:12px;padding:26px 24px;border:1px solid var(--line);background:#fff}
+ .state h1{margin:0 0 6px;font-size:27px;letter-spacing:-.6px;line-height:1.25}
+ .state p{margin:0;color:var(--muted);font-size:15px}
+ .state.ok{background:#edf5e1;border-color:#cfe0b8}.state.problem{background:#fdf3d8;border-color:#e3c98f;color:#5a4208}.state.problem p{color:#6d5416}
+ .note{margin-top:18px;border-radius:10px;padding:16px 20px;background:#fff;border:1px solid var(--line);font-size:15px;white-space:pre-wrap}
+ .note b{display:block;font-size:12px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+ ul{list-style:none;padding:0;margin:26px 0 0;background:#fff;border:1px solid var(--line);border-radius:10px}
+ li{display:flex;justify-content:space-between;gap:16px;padding:14px 20px;border-top:1px solid var(--line);font-size:15px}li:first-child{border-top:0}
+ li span:last-child{font-weight:600;white-space:nowrap}.up{color:#3f651e}.down{color:#9a5b00}
+ footer{margin-top:28px;color:var(--muted);font-size:13px}footer a{color:inherit}
+</style>
+</head>
+<body>
+<main>
+ <header><strong>OnlineForms status</strong><a href="https://onlineforms.app">onlineforms.app</a></header>
+ <section id="state" class="state" role="status" aria-live="polite"><h1 id="headline">Checking…</h1><p id="detail">Loading the latest check.</p></section>
+ <div id="message" class="note" hidden><b>Message from OnlineForms</b><span></span></div>
+ <div id="notice" class="note" hidden><b>Service notice</b><span></span></div>
+ <ul id="checks" aria-label="What is checked"></ul>
+ <footer>
+  <p id="checked"></p>
+  <p>This page is hosted separately from OnlineForms, so it stays available if the service is not. The site is checked automatically every few minutes. Need help? Email <a href="mailto:onlineforms@4eyez.co.uk">onlineforms@4eyez.co.uk</a>.</p>
+ </footer>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const when=iso=>new Date(iso).toLocaleString('en-GB',{timeZone:'Europe/London',day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'})+' (UK time)';
+const ago=iso=>{const m=Math.round((Date.now()-Date.parse(iso))/60000);return m<1?'less than a minute ago':m===1?'1 minute ago':m<90?m+' minutes ago':Math.round(m/60)+' hours ago';};
+function show(kind,headline,detail){$('state').className='state '+kind;$('headline').textContent=headline;$('detail').textContent=detail;}
+function note(id,text){const el=$(id);el.hidden=!text;el.querySelector('span').textContent=text||'';}
+async function load(){
+ const stamp='?t='+Date.now();
+ try{const m=await fetch('message.txt'+stamp,{cache:'no-store'});note('message',m.ok?(await m.text()).trim().slice(0,1000):'');}catch{note('message','');}
+ try{
+  const r=await fetch('status.json'+stamp,{cache:'no-store'});if(!r.ok)throw 0;const s=await r.json();
+  const old=Date.now()-Date.parse(s.checkedAt)>50*60000;
+  if(old)show('','Status not confirmed','The automatic check has not reported for a while, so we cannot confirm the current state. The last result was: '+(s.ok?'everything working':'a problem')+'.');
+  else if(s.ok)show('ok','Everything is working','No problems found. Working normally since '+when(s.since)+'.');
+  else show('problem','We are aware of a problem','Something is not working as it should, and we are on it. First noticed '+when(s.since)+'. Responses already submitted are safe.');
+  note('notice',s.notice&&s.notice.message?s.notice.message:'');
+  const list=$('checks');list.textContent='';
+  for(const c of s.checks){const li=document.createElement('li'),a=document.createElement('span'),b=document.createElement('span');a.textContent=c.name;b.textContent=old?'Not confirmed':c.ok?'Working':'Problem';b.className=old?'':c.ok?'up':'down';li.append(a,b);list.append(li);}
+  $('checked').textContent='Last confirmed '+ago(s.checkedAt)+', '+when(s.checkedAt)+'.';
+ }catch{show('','Status not available','The latest check could not be loaded. Please try again in a minute.');}
+}
+load();setInterval(load,60000);
+</script>
+</body>
+</html>
