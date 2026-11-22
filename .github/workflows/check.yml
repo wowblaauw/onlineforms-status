@@ -1,7 +1,9 @@
-name: Check onlineforms.app
+name: Check onlineforms.app (backstop)
+# Abel on the iMac checks every five minutes. This slower check runs in GitHub's cloud, off
+# the workshop broadband, and also raises an alert if Abel's heartbeat (abel.json) stops.
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '*/30 * * * *'
   workflow_dispatch:
 permissions:
   contents: write
@@ -27,6 +29,7 @@ jobs:
           git config user.email "status-check@users.noreply.github.com"
           git add status.json
           git diff --cached --quiet || git commit -q -m "Status: ${{ steps.check.outputs.ok == 'true' && 'all working' || 'problem detected' }}"
+          git pull -q --rebase || { git rebase --abort; git checkout -q -- .; exit 0; }
           git push -q
       - name: Tell the owner when a problem starts
         if: steps.check.outputs.ok == 'false' && steps.check.outputs.was_ok == 'true'
@@ -43,3 +46,15 @@ jobs:
           for n in $(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "OnlineForms problem detected in:title" --json number --jq '.[].number'); do
             gh issue close "$n" --repo "$GITHUB_REPOSITORY" --comment "All checks are working again as of $(date -u '+%H:%M UTC on %d %B %Y')."
           done
+      - name: Alert if Abel has gone quiet
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git pull -q --rebase 2>/dev/null || true
+          AGE=$(node -e "try{const a=require('./abel.json');console.log(Math.round((Date.now()-Date.parse(a.at))/60000))}catch{console.log(9999)}")
+          OPEN=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "Abel has gone quiet in:title" --json number --jq '.[].number')
+          if [ "$AGE" -gt 60 ] && [ -z "$OPEN" ]; then
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "Abel has gone quiet" --body "The iMac checker (Abel) last reported $AGE minutes ago. Likely causes: workshop broadband down, the iMac off or asleep, or its scheduled job stopped. OnlineForms itself was checked from GitHub in this same run: see status.json."
+          elif [ "$AGE" -le 60 ]; then
+            for n in $OPEN; do gh issue close "$n" --repo "$GITHUB_REPOSITORY" --comment "Abel is reporting again (last report $AGE minutes ago)."; done
+          fi
