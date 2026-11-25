@@ -1,6 +1,6 @@
 {
  "ok": true,
- "checkedAt": "2026-11-25T20:13:36.555Z",
+ "checkedAt": "2026-11-25T20:43:52.920Z",
  "by": "abel",
  "since": "2026-11-21T20:27:15.253Z",
  "checks": [
@@ -9,21 +9,21 @@
    "name": "Website",
    "ok": true,
    "detail": "HTTP 200",
-   "ms": 308
+   "ms": 351
   },
   {
    "id": "signin",
    "name": "Sign-in page",
    "ok": true,
    "detail": "HTTP 200",
-   "ms": 124
+   "ms": 119
   },
   {
    "id": "data",
    "name": "Forms and responses (database)",
    "ok": true,
    "detail": "HTTP 200",
-   "ms": 127
+   "ms": 165
   }
  ],
  "notice": null
